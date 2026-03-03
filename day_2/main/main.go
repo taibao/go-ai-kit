@@ -10,7 +10,6 @@ import (
 const (
 	apiKey = "418bbb73-29bd-42dd-9908-c8ee99657fb6"
 	model  = "doubao-seed-2-0-code-preview-260215" // 你的模型ID
-	apiUrl = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
 )
 
 func main() {

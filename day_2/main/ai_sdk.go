@@ -18,7 +18,40 @@ type AISDKConfig struct {
 	APIUrl  string
 }
 
-// 新建SDK实例
+// 消息结构体（如果 main.go 中没有定义）
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// 流式请求结构体
+type StreamRequest struct {
+	Model    string    `json:"model"`
+	Messages []Message `json:"messages"`
+	Stream   bool      `json:"stream"`
+}
+
+// 流式响应相关结构体
+type Delta struct {
+	Content string `json:"content"`
+}
+
+type Choice struct {
+	Delta        Delta  `json:"delta"`
+	FinishReason string `json:"finish_reason"`
+}
+
+type StreamResponse struct {
+	Choices []Choice `json:"choices"`
+}
+
+// 普通请求结构体
+type Request struct {
+	Model    string    `json:"model"`
+	Messages []Message `json:"messages"`
+}
+
+// 新建 SDK 实例
 func NewAISDK(apiKey, modelID string) *AISDKConfig {
 	return &AISDKConfig{
 		APIKey:  apiKey,
@@ -40,30 +73,30 @@ func (s *AISDKConfig) StreamChat(ctx context.Context, question string) error {
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		return fmt.Errorf("序列化请求失败: %v", err)
+		return fmt.Errorf("序列化请求失败：%v", err)
 	}
 
 	// 创建请求
-	req, err := http.NewRequestWithContext(ctx, "POST", apiUrl, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", s.APIUrl, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return fmt.Errorf("创建请求失败: %v", err)
+		return fmt.Errorf("创建请求失败：%v", err)
 	}
 
 	// 设置请求头
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Authorization", "Bearer "+s.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	// 发送请求
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("发送请求失败: %v", err)
+		return fmt.Errorf("发送请求失败：%v", err)
 	}
 	defer resp.Body.Close()
 
 	// 检查响应状态
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("请求失败，状态码: %d", resp.StatusCode)
+		return fmt.Errorf("请求失败，状态码：%d", resp.StatusCode)
 	}
 
 	// 逐行读取流式响应
@@ -80,7 +113,7 @@ func (s *AISDKConfig) StreamChat(ctx context.Context, question string) error {
 			line = strings.TrimPrefix(line, "data: ")
 		}
 
-		// 解析JSON
+		// 解析 JSON
 		var streamResp StreamResponse
 		err := json.Unmarshal([]byte(line), &streamResp)
 		if err != nil {
@@ -102,11 +135,6 @@ func (s *AISDKConfig) StreamChat(ctx context.Context, question string) error {
 	return scanner.Err()
 }
 
-type Request struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
-}
-
 // 普通聊天（非流式）
 func (s *AISDKConfig) Chat(ctx context.Context, question string) (string, error) {
 	reqBody := Request{
@@ -119,20 +147,31 @@ func (s *AISDKConfig) Chat(ctx context.Context, question string) (string, error)
 		},
 	}
 
-	jsonData, _ := json.Marshal(reqBody)
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("序列化失败：%v", err)
+	}
 
-	req, _ := http.NewRequestWithContext(ctx, "POST", apiUrl, bytes.NewBuffer(jsonData))
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req, err := http.NewRequestWithContext(ctx, "POST", s.APIUrl, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("创建请求失败：%v", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+s.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("发送请求失败：%v", err)
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("读取响应失败：%v", err)
+	}
+
 	fmt.Println("返回结果：")
 	fmt.Println(string(body))
 	return string(body), nil
