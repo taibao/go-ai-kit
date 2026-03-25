@@ -358,5 +358,8 @@ func (s *AISDKConfig) SwitchModel(modelType string) {
 	case "tongyi":
 		s.ModelID = "sk-fcdb23bbc0c34222a4e30cfbebf3a10c"
 		s.APIUrl = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
+	case "kimi":
+		s.ModelID = "sk-FsPJ9fqCyXBxnWJgcgddJMfyD8W5BUw2Da9cBCpKpIZDqJeA"
+		s.APIUrl = ""
 	}
 }
